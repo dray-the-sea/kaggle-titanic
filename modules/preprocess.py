@@ -1,16 +1,23 @@
 import pandas as pd
 
 
-def aggregated_preprocess1(data):
+def aggregated_preprocess1(df):
     """
     preprocesses data with:
-    1. "unknown" for NA cabin
-    2. creates MultiCabin field
+    1. mark all columns where data will be filled in (imputed?)
+    2. "unknown" for NA cabin, creates MultiCabin field
     3. infers Age from Sex, Parch, SibSp
     4. converts Sex, Embarked, Deck, MultiCabin, Ticket to category columns
-    5. drops Name, Cabin
-    6. converts all to numbers 
+    5. converts all to numbers 
+    6. drops Name, Cabin
     """
+    df = mark_missing_labels(df)
+    df = infer_cabin_features(df)
+    df.Age = df.apply(lambda row: fill_with_median_of_pss(row, df), axis=1)    
+    df = numerify_categorical_columns(df, columns=["Sex", "Embarked", "Deck", "MultiCabin", "Ticket"])
+    df = df.drop("Name", axis=1).drop("Cabin", axis = 1)
+    return df
+
 
 
 def numerify_categorical_columns(data, columns=None):
