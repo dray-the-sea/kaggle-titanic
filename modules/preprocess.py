@@ -1,6 +1,17 @@
 import pandas as pd
 
 
+def aggregated_preprocess1(data):
+    """
+    preprocesses data with:
+    1. "unknown" for NA cabin
+    2. creates MultiCabin field
+    3. infers Age from Sex, Parch, SibSp
+    4. converts Sex, Embarked, Deck, MultiCabin, Ticket to category columns
+    5. drops Name, Cabin
+    6. converts all to numbers 
+    """
+
 
 def numerify_categorical_columns(data, columns=None):
     """
@@ -35,7 +46,7 @@ def infer_cabin_features(data):
     data.Cabin.fillna(MISSING_CABIN_VAL, inplace=True)
 
     data["Deck"] = data.Cabin.str.replace(pat='\d+', repl='', regex=True)
-    data["CabinNo"] = data.Cabin.str.replace(pat='[ABCDEFG]', repl="", regex=True)
+    #data["CabinNo"] = data.Cabin.str.replace(pat='[ABCDEFG]', repl="", regex=True)
     data['MultiCabin'] = data.apply (lambda row: label_multi_cabin(row), axis=1)    
 
 
@@ -57,4 +68,45 @@ def label_multi_cabin(row):
     else:
         #print(f"{deck} - single or multi")
         return "multi"
+
+def mark_missing_labels(data):
+    for label, content in data.items():
+        if pd.isnull(content).sum():
+                data[label+"_is_missing"] = pd.isnull(content)
+    return data
+
+def fill_age_neg_1(data):
+    """
+    Fills age values with -1; this is just one option for pre-processing age
+    """
+
+    data.Age.fillna(-1, inplace=True)
+    #fill in non-numeric missing data
+            
+
+    return data
+
+def fill_with_median_of_pss(row, data):
+    # if age is known, leave it alone
+    if row.Age > 0:
+        return row.Age
+    else:
+        # if sex, Parch, SibSp are known, take the median of these
+        pred_age = data.loc[((data.Parch == row.Parch) & (data.Sex == row.Sex)) & (data.SibSp == row.SibSp)].Age.median()
+
+        if pred_age > 0:
+            print(f"keys: {row.Parch}  {row.Sex}  {row.SibSp} predicts age: {pred_age} ")
+            return pred_age
+        else: 
+            # Sex, Parch, or SibSp must have had a unique value. most likely it's SibSp b/c there's more options, try median without it
+            pred_age = data.loc[((data.Parch == row.Parch) & (data.Sex == row.Sex))].Age.median()
+
+        if pred_age > 0:
+            print(f"keys: {row.Parch}  {row.Sex}  (excluding {row.SibSp}) predicts age: {pred_age} ")
+            return pred_age
+        else:  
+            pred_age = data.Age[data.Age == row.Age].median()
+
+        print(f"keys: {row.Sex}  (excluding parch {row.Parch}, sibsp {row.SibSp}) predicts age: {pred_age} ")
+        return pred_age
 
