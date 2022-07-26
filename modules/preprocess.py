@@ -131,3 +131,4 @@ def fill_fare_with_pclass_median(row, data):
     else:
         # if sex, Parch, SibSp are known, take the median of these
         return data.Fare[data.Pclass == row.Pclass].median()
+
