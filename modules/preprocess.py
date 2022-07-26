@@ -14,6 +14,7 @@ def aggregated_preprocess1(df):
     df = mark_missing_labels(df)
     df = infer_cabin_features(df)
     df.Age = df.apply(lambda row: fill_with_median_of_pss(row, df), axis=1)    
+    df.Fare = df.apply(lambda row: fill_fare_with_pclass_median(row, df), axis=1)   
     df = numerify_categorical_columns(df, columns=["Sex", "Embarked", "Deck", "MultiCabin", "Ticket"])
     df = df.drop("Name", axis=1).drop("Cabin", axis = 1)
     return df
@@ -109,11 +110,24 @@ def fill_with_median_of_pss(row, data):
             pred_age = data.loc[((data.Parch == row.Parch) & (data.Sex == row.Sex))].Age.median()
 
         if pred_age > 0:
-            print(f"keys: {row.Parch}  {row.Sex}  (excluding {row.SibSp}) predicts age: {pred_age} ")
+            print(f"keys: {row.Parch}  {row.Sex}  (excluding sibsp {row.SibSp}) predicts age: {pred_age} ")
             return pred_age
+        else: 
+            # Maybe Parch had a unique value. let's try without that one.
+            pred_age = data.loc[((data.SibSp == row.SibSp) & (data.Sex == row.Sex))].Age.median()
+        
+        if pred_age > 0:
+            print(f"keys: {row.Parch}  {row.Sex}  (excluding Parch {row.Parch}) predicts age: {pred_age} ")
+            return pred_age  
         else:  
-            pred_age = data.Age[data.Age == row.Age].median()
+            pred_age = data.Age[data.Sex == row.Sex].median()
 
         print(f"keys: {row.Sex}  (excluding parch {row.Parch}, sibsp {row.SibSp}) predicts age: {pred_age} ")
         return pred_age
 
+def fill_fare_with_pclass_median(row, data):
+    if row.Fare > 0:
+        return row.Fare
+    else:
+        # if sex, Parch, SibSp are known, take the median of these
+        return data.Fare[data.Pclass == row.Pclass].median()
