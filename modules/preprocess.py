@@ -22,6 +22,7 @@ def aggregated_preprocess1(df):
     df["Fare_is_missing"] = df.apply( lambda row: mark_missing(row, "Fare", -1), axis=1)   
     df["Fare"] = df.apply(lambda row: fill_fare_with_pclass_median(row, df), axis=1)  
 
+
     df = numerify_categorical_columns(df, columns=["Sex", "Embarked", "Deck", "MultiCabin", "Ticket"])
     df = df.drop("Name", axis=1).drop("Cabin", axis = 1)
     return df
