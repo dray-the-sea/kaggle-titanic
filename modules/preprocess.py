@@ -1,5 +1,5 @@
-from numpy import nan
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 def aggregated_preprocess1(df):
     """
@@ -9,7 +9,7 @@ def aggregated_preprocess1(df):
     3. infers Age from Sex, Parch, SibSp
     4. converts Sex, Embarked, Deck, MultiCabin, Ticket to category columns
     5. converts all to numbers 
-    6. drops Name, Cabin
+    6. drops Name, Cabin, PassengerId
     """
     #df = mark_missing_labels(df)
     df = infer_cabin_features(df)
@@ -24,8 +24,23 @@ def aggregated_preprocess1(df):
 
 
     df = numerify_categorical_columns(df, columns=["Sex", "Embarked", "Deck", "MultiCabin", "Ticket"])
-    df = df.drop("Name", axis=1).drop("Cabin", axis = 1)
+    df = df.drop("Name", axis=1).drop("Cabin", axis = 1).drop("PassengerId", axis = 1)
     return df
+
+
+
+def scale_aggregated1(data):
+    """
+    MinMax scale preprocessed dataframe
+    """
+    scaler = MinMaxScaler()
+
+    copy = data.copy()
+    scale_arr = scaler.fit_transform(copy)
+    scale_df = pd.DataFrame(copy)
+    scale_df.columns = data.columns
+    
+    return scale_df
 
 
 
@@ -112,15 +127,15 @@ def fill_with_median_of_pss(row, data):
             # if sex, Parch, SibSp are known, take the median of these
             pred_age = data.loc[((data.Parch == row.Parch) & (data.Sex == row.Sex)) & (data.SibSp == row.SibSp)].Age.median()
 
-            if pred_age == 0:
+            if pred_age == -1:
                 # Sex, Parch, or SibSp must have had a unique value. most likely it's SibSp b/c there's more options, try median without it
                 pred_age = data.loc[((data.Parch == row.Parch) & (data.Sex == row.Sex))].Age.median()
 
-            if pred_age == 0:
+            if pred_age == -1:
                 # Maybe Parch had a unique value. let's try without that one.
                 pred_age = data.loc[((data.SibSp == row.SibSp) & (data.Sex == row.Sex))].Age.median()
             
-            if pred_age == 0:  
+            if pred_age == -1:  
                 pred_age = data.Age[data.Sex == row.Sex].median()
 
             #print(f"keys: {row.Sex}  (excluding parch {row.Parch}, sibsp {row.SibSp}) predicts age: {pred_age} ")
