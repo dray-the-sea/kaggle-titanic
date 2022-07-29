@@ -1,8 +1,10 @@
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
-def aggregated_preprocess1(df):
+def aggregated_preprocess1(df, report=False):
     """
+    df - dataframe to pre-proess 
+    report - if true, print report of the different operations 
     preprocesses data with:
     1. mark all columns where data will be filled in (imputed?)
     2. "unknown" for NA cabin, creates MultiCabin field
@@ -23,7 +25,7 @@ def aggregated_preprocess1(df):
     df["Fare"] = df.apply(lambda row: fill_fare_with_pclass_median(row, df), axis=1)  
 
 
-    df = numerify_categorical_columns(df, columns=["Sex", "Embarked", "Deck", "MultiCabin", "Ticket"])
+    df = numerify_categorical_columns(df, columns=["Sex", "Embarked", "Deck", "MultiCabin", "Ticket"], report=report)
     df = df.drop("Name", axis=1).drop("Cabin", axis = 1).drop("PassengerId", axis = 1)
     return df
 
@@ -44,25 +46,32 @@ def scale_aggregated1(data):
 
 
 
-def numerify_categorical_columns(data, columns=None):
+def numerify_categorical_columns(data, columns=None, report=False):
     """
     converts text columns to numeric categories 
     data: DataFrame with the data to be converted
     columns=None: array of column names. If None, will go through all the columns
+    report=False: will print process notes if set to true
     """
-    
+    process_report = {}
+
     for label, content in data.items():
+
         # if column needs processing, go ahead
         if not columns or label in columns:
             if pd.api.types.is_string_dtype(content):
                 data[label] = content.astype("category").cat.as_ordered()
-                print (f"converting {label} to category type")
+                process_report[label] = "converted to category type"
             else: 
-                print (f"skipping conversion for {label}, not a string col")
+                process_report[label] = "skipping conversion, not a string type"
 
             data[label] = pd.Categorical(content).codes + 1
         else: 
-            print (f"{label}, not in col list")
+            process_report[label] = "skipping conversion, not in conversion list"
+
+    if report:
+        for col, stat in process_report:
+            print(f"{col}: {stat}")
 
     return data
 
