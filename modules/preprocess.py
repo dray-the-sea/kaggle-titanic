@@ -1,6 +1,45 @@
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
+
+
+def aggregated_preprocess2(df):
+    df["Family"] = df.SibSp+df.Parch
+    df[['LastName','TitleFirstName']] = df.Name.str.split(',', expand=True)
+    df['Title'] = df.TitleFirstName.apply(lambda x: x.split('.') [0])
+    df.Embarked.fillna("X", inplace=True)
+
+    df["Age"] = df.apply(lambda row: fill_with_median_of_fam_size(row, df), axis=1) 
+
+    """ 
+    df["TicketSurvivalRate"] = .5
+    for _, travel_group in df.groupby('Ticket'):
+        if (len(travel_group) > 1):
+            df["TicketSurvivalRate"] = travel_group.Survived.mean() 
+    """
+
+    df = set_age_groups(df)
+    df = set_fare_groups(df)
+
+    df = df.drop(['Name', 'SibSp', "Parch", 'LastName'], axis=1)
+
+    return df
+
+def set_age_groups(df):
+    cut_ages = [1, 2, 3, 4, 5, 6]
+    cut_bins = [ 0, 18, 23, 28.815, 35, 44.92, 100]
+    df['AgeGroup'] = pd.cut(df['Age'], bins=cut_bins, labels = cut_ages)
+
+    return df
+
+def set_fare_groups(df):
+    cut_fares = [1, 2, 3, 4, 5, 6]
+    cut_fare_bins = [ 0, 7.775, 8.6625, 14.5, 26.3075,  53.1, 600]
+    df['FareGroup'] = pd.cut(df['Fare'], bins=cut_fare_bins, labels = cut_fares)
+
+    return df
+
+
 def aggregated_preprocess1(df, report=False):
     """
     df - dataframe to pre-proess 
@@ -45,6 +84,34 @@ def scale_aggregated1(data):
     return scale_df
 
 
+def numerify_categorical_columns_0(data, columns=None, report=False):
+    """
+    converts text columns to numeric categories 
+    data: DataFrame with the data to be converted
+    columns=None: array of column names. If None, will go through all the columns
+    report=False: will print process notes if set to true
+    """
+    process_report = {}
+
+    for label, content in data.items():
+
+        # if column needs processing, go ahead
+        if not columns or label in columns:
+            if pd.api.types.is_string_dtype(content):
+                data[label] = content.astype("category").cat.as_ordered()
+                process_report[label] = "converted to category type"
+            else: 
+                process_report[label] = "skipping conversion, not a string type"
+
+            data[label] = pd.Categorical(content).codes
+        else: 
+            process_report[label] = "skipping conversion, not in conversion list"
+
+    if report:
+        for col, stat in process_report:
+            print(f"{col}: {stat}")
+
+    return data
 
 def numerify_categorical_columns(data, columns=None, report=False):
     """
@@ -75,22 +142,20 @@ def numerify_categorical_columns(data, columns=None, report=False):
 
     return data
 
-def infer_cabin_features(data):
+def infer_cabin_features(data, mark_missing=True):
     """
-    takes titanic data and infers a Deck and CabinNo features from Cabin. 
+    takes titanic data and infers a Deck features from Cabin. 
     Deck is the first letter of the Cabin value
-    CabinNo is the numbers
+    Deck_is_missing tells you if the data has been filled
     """
 
     MISSING_CABIN_VAL = "unknown"
     data.Cabin.fillna(MISSING_CABIN_VAL, inplace=True)
 
     data["Deck"] = data.Cabin.str.replace(pat='\d+', repl='', regex=True)
-    #data['MultiCabin'] = data.apply (lambda row: label_multi_cabin(row), axis=1)    
 
-    #data["Cabin_is_missing"] = data.apply( lambda row: mark_missing(row, "Cabin", MISSING_CABIN_VAL), axis=1)
-    data["Deck_is_missing"] = data.apply( lambda row: mark_missing(row, "Cabin", MISSING_CABIN_VAL), axis=1)
-    #data["MultiCabin_is_missing"] = data.apply( lambda row: mark_missing(row, "Cabin", MISSING_CABIN_VAL), axis=1)
+    if mark_missing:
+        data["Deck_is_missing"] = data.apply( lambda row: mark_missing(row, "Cabin", MISSING_CABIN_VAL), axis=1)
 
     return data
 
@@ -152,6 +217,15 @@ def fill_with_median_of_pss(row, data):
 
         except:
                 print(f"keys: {row.Parch}  {row.Sex}  {row.SibSp} caused an exception ")
+
+
+
+def fill_with_median_of_fam_size(row, data):
+    if row.Age > 0:
+        return row.Age
+    else:
+        return data.loc[((data.Family == row.Family) & (data.Sex == row.Sex))].Age.mean()
+
 
 
 def fill_fare_with_pclass_median(row, data):
