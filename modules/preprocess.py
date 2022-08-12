@@ -33,8 +33,8 @@ def set_age_groups(df):
     return df
 
 def set_fare_groups(df):
-    cut_fares = [1, 2, 3, 4, 5, 6]
-    cut_fare_bins = [ 0, 7.775, 8.6625, 14.5, 26.3075,  53.1, 600]
+    cut_fares = [1, 2, 3, 4, 5]
+    cut_fare_bins = [ -1, 10, 25, 35, 53, 600]
     df['FareGroup'] = pd.cut(df['Fare'], bins=cut_fare_bins, labels = cut_fares)
 
     return df
@@ -229,7 +229,7 @@ def fill_with_median_of_fam_size(row, data):
 
 
 def fill_fare_with_pclass_median(row, data):
-    if row.Fare > 0:
+    if row.Fare >= 0:
         return row.Fare
     else:
         # if sex, Parch, SibSp are known, take the median of these
